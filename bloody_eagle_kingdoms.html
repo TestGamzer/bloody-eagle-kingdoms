@@ -421,3 +421,160 @@ const _db4=drawBody;drawBody=function(soft){_db4(soft);if(soft)return;const b=do
 bootSave();
 render();
 </script></body></html>
+// ==========================================
+// النظام الموحد لألعاب الممالك - مملكة النسر الدامي
+// ==========================================
+
+// 1. حالة اللعبة والموارد الأساسية
+const gameState = {
+    kingdomName: "النسر الدامي",
+    gold: 1500,
+    food: 800,
+    iron: 400,
+    soldiers: 250,
+    selectedTerritory: null,
+    logHistory: []
+};
+
+// 2. حلقة اللعبة الرئيسية (تحديث الموارد تلقائياً كل ثانية أو دقيقة)
+function startKingdomLoop() {
+    setInterval(() => {
+        // توليد الموارد بمرور الوقت
+        gameState.gold += 10;
+        gameState.food += 5;
+        gameState.iron += 2;
+        
+        // تحديث الواجهة أو حفظ التقدم
+        if (typeof bootSave === 'function') {
+            bootSave();
+        }
+    }, 5000); // كل 5 ثوانٍ
+}
+
+// 3. نظام المعارك الموحد
+function resolveBattle(targetName, enemyPower, playerPower) {
+    const isVictory = playerPower >= enemyPower;
+    const losses = Math.round(playerPower * (isVictory ? 0.1 : 0.3));
+    
+    gameState.soldiers -= losses;
+    
+    const message = isVictory 
+        ? `نصر عظيم لمملكة النسر الدامي على ${targetName}! (الخسائر: ${losses} جندي)` 
+        : `هزيمة قاسية أمام ${targetName}... تراجعت القوات بخسائر بالغة (${losses} جندي).`;
+    
+    logKingdomEvent(message);
+    return isVictory;
+}
+
+// 4. سجل الأحداث (Log)
+function logKingdomEvent(text) {
+    const timestamp = new Date().toLocaleTimeString();
+    const fullMessage = `[${timestamp}] ${text}`;
+    gameState.logHistory.unshift(fullMessage);
+    
+    // ربطه بعنصر السجل في الواجهة إن وجد
+    const logDiv = document.getElementById('log');
+    if (logDiv) {
+        logDiv.innerHTML = `<div style="padding: 2px 0;">${fullMessage}</div>` + logDiv.innerHTML;
+    }
+}
+
+// 5. تهيئة النظام عند تشغيل اللعبة
+document.addEventListener("DOMContentLoaded", () => {
+    logKingdomEvent("تم إقلاع نظام مملكة النسر الدامي بنجاح.");
+    startKingdomLoop();
+    if (typeof render === 'function') {
+        render();
+    }
+});
+// ==========================================
+// ربط النظام الموحد بواجهة اللعبة (#top و #panel)
+// ==========================================
+
+// تحديث شريط المعلومات العلوي (#top) ليعرض الموارد والجنود
+function updateTopBar() {
+    const topBar = document.getElementById('top');
+    if (topBar) {
+        topBar.innerHTML = `
+            <div>مملكة: <b>${gameState.kingdomName}</b></div>
+            <div>ذهـب: <b>${gameState.gold}</b> 🪙</div>
+            <div>طعام: <b>${gameState.food}</b> 🌾</div>
+            <div>حديد: <b>${gameState.iron}</b> ⚔️</div>
+            <div>الجيش: <b>${gameState.soldiers}</b> 🛡️</div>
+        `;
+    }
+}
+
+// تعديل دالة startKingdomLoop لتحديث الشريط العلوي مع كل دورتين
+const originalLoop = startKingdomLoop;
+startKingdomLoop = function() {
+    setInterval(() => {
+        gameState.gold += 10;
+        gameState.food += 5;
+        gameState.iron += 2;
+        updateTopBar();
+        if (typeof bootSave === 'function') {
+            bootSave();
+        }
+    }, 5000);
+};
+
+// تحديث الواجهة فور التحميل
+document.addEventListener("DOMContentLoaded", () => {
+    updateTopBar();
+});// ==========================================
+// نظام تدريب الجيش التفاعلي لمملكة النسر الدامي
+// ==========================================
+
+function trainSoldiers(amount, goldCost, foodCost) {
+    if (gameState.gold >= goldCost && gameState.food >= foodCost) {
+        gameState.gold -= goldCost;
+        gameState.food -= foodCost;
+        gameState.soldiers += amount;
+        
+        logKingdomEvent(`تم تدريب ${amount} جندي بنجاح لصالح مملكة النسر الدامي! 🛡️`);
+        updateTopBar();
+        
+        if (typeof bootSave === 'function') {
+            bootSave();
+        }
+    } else {
+        logKingdomEvent(`فشل التدريب: الموارد غير كافية (تحتاج إلى ${goldCost} ذهب و ${foodCost} طعام). ⚠️`);
+    }
+}
+
+// ==========================================
+// إضافة زر تدريب الجيش داخل لوحة التحكم (#panel)
+// ==========================================
+
+function renderTrainingPanel() {
+    const bodyDiv = document.getElementById('body');
+    if (bodyDiv) {
+        const trainSection = document.createElement('div');
+        trainSection.className = 'row';
+        trainSection.style.flexDirection = 'column';
+        trainSection.style.gap = '8px';
+        trainSection.style.marginTop = '10px';
+        
+        trainSection.innerHTML = `
+            <h3>ثكنة مملكة النسر الدامي</h3>
+            <div style="font-size:0.85rem; color:var(--tx);">
+                تكلفة تدريب 10 جنود: <b>100 ذهب</b> 🪙 + <b>50 طعام</b> 🌾
+            </div>
+            <button class="btn gd" onclick="trainSoldiers(10, 100, 50)">
+                🛡️ تدريب 10 جنود جدد
+            </button>
+        `;
+        bodyDiv.appendChild(trainSection);
+    }
+}
+
+// تشغيل اللوحة عند تحميل الصفحة
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(renderTrainingPanel, 500);
+});
+
+</script>
+</body>
+</html>
+
